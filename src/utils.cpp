@@ -6,8 +6,11 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <phosphor-logging/log.hpp>
 
 using json = nlohmann::json;
+
+using namespace phosphor::logging;
 
 namespace utils
 {
@@ -40,8 +43,14 @@ json loadFromFile(const char* path)
 }
 } // namespace details
 
-std::string getService(sdbusplus::bus::bus& bus, const char* path,
-                       const char* interface)
+const UtilsInterface& getUtils()
+{
+    static Utils utils;
+    return utils;
+}
+
+std::string Utils::getService(sdbusplus::bus::bus& bus, const char* path,
+                              const char* interface) const
 {
     auto mapper = bus.new_method_call(MAPPER_BUSNAME, MAPPER_PATH,
                                       MAPPER_INTERFACE, "GetObject");
@@ -74,7 +83,7 @@ std::string getService(sdbusplus::bus::bus& bus, const char* path,
     }
 }
 
-std::vector<std::string> getPSUInventoryPath()
+std::vector<std::string> Utils::getPSUInventoryPath() const
 {
     auto data = details::loadFromFile(PSU_JSON_CONFIG);
 
@@ -91,7 +100,7 @@ std::vector<std::string> getPSUInventoryPath()
     return data["PSU_INVENTORY_PATH"];
 }
 
-std::string getVersionId(const std::string& version)
+std::string Utils::getVersionId(const std::string& version) const
 {
     if (version.empty())
     {
@@ -113,6 +122,29 @@ std::string getVersionId(const std::string& version)
     // Only need 8 hex digits.
     std::string hexId = std::string(mdString);
     return (hexId.substr(0, 8));
+}
+
+std::any Utils::getPropertyImpl(sdbusplus::bus::bus& bus, const char* service,
+                                const char* path, const char* interface,
+                                const char* propertyName) const
+{
+    auto method = bus.new_method_call(service, path,
+                                      "org.freedesktop.DBus.Properties", "Get");
+    method.append(interface, propertyName);
+    try
+    {
+        sdbusplus::message::variant<std::string, bool> value{};
+        auto reply = bus.call(method);
+        reply.read(value);
+        return std::any(value);
+    }
+    catch (const sdbusplus::exception::SdBusError& ex)
+    {
+        log<level::ERR>("GetProperty call failed", entry("PATH=%s", path),
+                        entry("INTERFACE=%s", interface),
+                        entry("PROPERTY=%s", propertyName));
+        throw std::runtime_error("GetProperty call failed");
+    }
 }
 
 } // namespace utils

@@ -24,6 +24,7 @@ cdata.set_quoted('ACTIVE_FWD_ASSOCIATION', 'active')
 cdata.set_quoted('ACTIVE_REV_ASSOCIATION', 'software_version')
 cdata.set_quoted('FUNCTIONAL_FWD_ASSOCIATION', 'functional')
 cdata.set_quoted('FUNCTIONAL_REV_ASSOCIATION', 'software_version')
+cdata.set_quoted('ITEM_IFACE', 'xyz.openbmc_project.Inventory.Item')
 
 cdata.set_quoted('SOFTWARE_OBJPATH', get_option('SOFTWARE_OBJPATH'))
 cdata.set_quoted('MANIFEST_FILE', get_option('MANIFEST_FILE'))
@@ -35,8 +36,8 @@ configure_file(output: 'config.h',
 )
 test_inc = include_directories('.')
 
-utest = executable(
-  'utest',
+test_util = executable(
+  'test_util',
   '../src/utils.cpp',
   'test_utils.cpp',
   include_directories: [psu_inc, test_inc],
@@ -52,4 +53,24 @@ utest = executable(
     ssl,
   ])
 
-test('all', utest)
+test_item_updater = executable(
+  'test_item_updater',
+  '../src/activation.cpp',
+  '../src/item_updater.cpp',
+  '../src/version.cpp',
+  'test_item_updater.cpp',
+  include_directories: [psu_inc, test_inc],
+  cpp_args: '-flto',
+  link_args: oe_sdk.enabled() ? ['-flto', dynamic_linker] : '-flto',
+  build_rpath: oe_sdk.enabled() ? rpath : '',
+  dependencies: [
+    gtest,
+    gmock,
+    phosphor_logging,
+    phosphor_dbus_interfaces,
+    sdbusplus,
+    ssl,
+  ])
+
+test('util', test_util)
+test('item_updater', test_item_updater)
