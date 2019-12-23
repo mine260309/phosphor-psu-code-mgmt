@@ -59,6 +59,86 @@ The above configures the vendor-specific tools to use `psutils` from
 `psu-update@.service` to perform the PSU firmware update, where
 internally it invokes `psutils` as well.
 
+
+## Usage
+
+### PSU version
+
+When the service starts, it queries the inventory to get all the PSU inventory paths, invokes the vendor-specific tool to get the versions, and create version objects under `/xyz/openbmc_project/software` that are associated with the PSU inventory path.
+If multiple PSUs are using the same version, multiple PSU inventory paths are associated.
+
+E.g.
+* Example of system with two PSUs that have different versions:
+   ```
+    "/xyz/openbmc_project/software/02572429": {
+      "Activation": "xyz.openbmc_project.Software.Activation.Activations.Active",
+      "Associations": [
+        [
+          "inventory",
+          "activation",
+          "/xyz/openbmc_project/inventory/system/chassis/motherboard/powersupply1"
+        ]
+      ],
+      "ExtendedVersion": "",
+      "Path": "",
+      "Purpose": "xyz.openbmc_project.Software.Version.VersionPurpose.PSU",
+      "RequestedActivation": "xyz.openbmc_project.Software.Activation.RequestedActivations.None",
+      "Version": "01120114"
+    },
+    "/xyz/openbmc_project/software/7094f612": {
+      "Activation": "xyz.openbmc_project.Software.Activation.Activations.Active",
+      "Associations": [
+        [
+          "inventory",
+          "activation",
+          "/xyz/openbmc_project/inventory/system/chassis/motherboard/powersupply0"
+        ]
+      ],
+      "ExtendedVersion": "",
+      "Path": "",
+      "Purpose": "xyz.openbmc_project.Software.Version.VersionPurpose.PSU",
+      "RequestedActivation": "xyz.openbmc_project.Software.Activation.RequestedActivations.None",
+      "Version": "00000110"
+    },
+   ``` 
+* Example of system with two PSUs that have the same version:
+   ```
+    "/xyz/openbmc_project/software/9463c2ad": {
+      "Activation": "xyz.openbmc_project.Software.Activation.Activations.Active",
+      "Associations": [
+        [
+          "inventory",
+          "activation",
+          "/xyz/openbmc_project/inventory/system/chassis/motherboard/powersupply0"
+        ],
+        [
+          "inventory",
+          "activation",
+          "/xyz/openbmc_project/inventory/system/chassis/motherboard/powersupply1"
+        ]
+      ],
+      "ExtendedVersion": "",
+      "Path": "",
+      "Purpose": "xyz.openbmc_project.Software.Version.VersionPurpose.PSU",
+      "RequestedActivation": "xyz.openbmc_project.Software.Activation.RequestedActivations.None",
+      "Version": "01100110"
+    },
+   ```
+
+### PSU update
+
+1. Generate a tarball of PSU firmware image by [generate-psu-tar tool][4].
+   ```
+   ./generate-psu-tar -i PSU.hex -v 12-34 -model 432-1 -mf LITEON -o test.tar -s   
+   ```
+2. To update the PSU firmare, follow the same steps as described in [code-update.md][5]:
+* Upload a PSU image tarball and get the version ID;
+* Set the RequestedActivation state of the uploaded image's version ID.
+
+
+
 [1]: https://github.com/openbmc/docs/blob/master/testing/local-ci-build.md
 [2]: https://github.com/openbmc/docs/blob/master/cheatsheet.md#building-the-openbmc-sdk
 [3]: https://github.com/openbmc/phosphor-power/tree/master/tools/power-utils
+[4]: https://github.com/openbmc/phosphor-psu-code-mgmt/blob/master/tools/generate-psu-tar 
+[5]: https://github.com/openbmc/docs/blob/master/code-update/code-update.md
